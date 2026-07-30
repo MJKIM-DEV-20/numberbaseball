@@ -32,14 +32,14 @@ export function useNumberBaseball(digitCount: number, mode: GameMode) {
   }, [digitCount, mode]);
 
   const onDigit = useCallback(
-    (n: number) => {
-      if (gameOver) return;
-      setInput((prev) => {
-        if (prev.length >= digitCount || prev.includes(n)) return prev;
-        return [...prev, n];
-      });
-    },
-    [gameOver, digitCount]
+      (n: number) => {
+        if (gameOver) return;
+        setInput((prev) => {
+          if (prev.length >= digitCount || prev.includes(n)) return prev;
+          return [...prev, n];
+        });
+      },
+      [gameOver, digitCount]
   );
 
   const onDelete = useCallback(() => {
@@ -47,8 +47,16 @@ export function useNumberBaseball(digitCount: number, mode: GameMode) {
     setInput((prev) => prev.slice(0, -1));
   }, [gameOver]);
 
+  // 이미 시도한 조합인지 확인 (중복 제출 방지)
+  const isDuplicateGuess = useMemo(
+      () => history.some((entry) => entry.guess.join('') === input.join('')),
+      [history, input]
+  );
+
   const onSubmit = useCallback(() => {
     if (gameOver || input.length !== digitCount) return;
+    if (history.some((entry) => entry.guess.join('') === input.join(''))) return; // 중복 시도 방지
+
     const result = judge(input, secret);
     const nextHistory = [...history, { guess: input, ...result }];
     setHistory(nextHistory);
@@ -86,11 +94,14 @@ export function useNumberBaseball(digitCount: number, mode: GameMode) {
     if (status === 'lost') {
       return `삼진 아웃! 정답은 ${secret.join(' ')}였습니다`;
     }
+    if (input.length === digitCount && isDuplicateGuess) {
+      return '이미 시도한 조합이에요. 다른 숫자로 도전해보세요';
+    }
     if (!lastEntry) {
       return `1~9 숫자 ${digitCount}개를 중복 없이 입력하세요`;
     }
     return `${lastEntry.strike} 스트라이크 / ${lastEntry.ball} 볼 — 계속 입력하세요`;
-  }, [status, history.length, secret, lastEntry, digitCount]);
+  }, [status, history.length, secret, lastEntry, digitCount, input, isDuplicateGuess]);
 
   return {
     digitCount,
@@ -103,10 +114,11 @@ export function useNumberBaseball(digitCount: number, mode: GameMode) {
     lastEntry,
     triesLeft,
     secret,
+    isDuplicateGuess,
     onDigit,
     onDelete,
     onSubmit,
     newGame,
-    canSubmit: !gameOver && input.length === digitCount,
+    canSubmit: !gameOver && input.length === digitCount && !isDuplicateGuess,
   };
 }
