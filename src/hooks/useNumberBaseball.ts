@@ -1,52 +1,35 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {isOut, isWin, judge, makeSecret } from '../lib/game';
+import {
+  isWin,
+  judge,
+  makeSecret,
+  MAX_TRIES,
+  type GameMode,
+  type HistoryEntry,
+} from '../lib/game';
 
+export type GameStatus = 'playing' | 'won' | 'lost';
 
-
-
-export function useNumberBaseball(digitCount: number) {
-
-  interface HistoryEntry {
-    guess: number[];
-    strike: number;
-    ball: number;
-  }
-
+export function useNumberBaseball(digitCount: number, mode: GameMode) {
   const [secret, setSecret] = useState<number[]>(() => makeSecret(digitCount));
   const [input, setInput] = useState<number[]>([]);
-  const [gameOver, setGameOver] = useState(false);
-  const [turns, setTurns] = useState(0);
+  const [status, setStatus] = useState<GameStatus>('playing');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
-  const availableDigits = useMemo(
-    () => Array.from({ length: 9 }, (_, i) => i + 1),
-    []
-  );
-
-  const hint = useMemo(() => {
-    if (gameOver) {
-      return `${turns}번 만에 성공! 정답: ${secret.join('')}`;
-    }
-    if (history.length === 0) {
-      return `1~9 숫자 ${digitCount}개를 눌러 입력하세요 (중복 없이)`;
-    }
-    const last = history[history.length - 1];
-    return `${last.strike} 스트라이크 / ${last.ball} 볼 — 계속 입력하세요`;
-  }, [gameOver, turns, secret, history, digitCount]);
+  const gameOver = status !== 'playing';
 
   const newGame = useCallback(() => {
     setSecret(makeSecret(digitCount));
     setInput([]);
-    setGameOver(false);
-    setTurns(0);
+    setStatus('playing');
     setHistory([]);
   }, [digitCount]);
 
-  // Re-seed whenever the digit count (difficulty) changes.
+  // 자릿수(난이도) 또는 모드가 바뀌면 새 게임으로 리셋
   useEffect(() => {
     newGame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [digitCount]);
+  }, [digitCount, mode]);
 
   const onDigit = useCallback(
     (n: number) => {
@@ -67,17 +50,18 @@ export function useNumberBaseball(digitCount: number) {
   const onSubmit = useCallback(() => {
     if (gameOver || input.length !== digitCount) return;
     const result = judge(input, secret);
-    setTurns((t) => t + 1);
-    setHistory((prev) => [...prev, { guess: input, ...result }]);
+    const nextHistory = [...history, { guess: input, ...result }];
+    setHistory(nextHistory);
+    setInput([]);
 
     if (isWin(result, digitCount)) {
-      setGameOver(true);
-    } else {
-      setInput([]);
+      setStatus('won');
+    } else if (mode === 'limited' && nextHistory.length >= MAX_TRIES) {
+      setStatus('lost');
     }
-  }, [gameOver, input, digitCount, secret]);
+  }, [gameOver, input, digitCount, secret, history, mode]);
 
-  // Physical keyboard support: 1-9 to enter, Backspace to delete, Enter to submit.
+  // 물리 키보드 지원: 1-9 입력, Backspace 삭제, Enter 제출
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key >= '1' && e.key <= '9') {
@@ -92,19 +76,37 @@ export function useNumberBaseball(digitCount: number) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onDigit, onDelete, onSubmit]);
 
+  const lastEntry = history[history.length - 1];
+  const triesLeft = mode === 'limited' ? MAX_TRIES - history.length : null;
+
+  const hint = useMemo(() => {
+    if (status === 'won') {
+      return `${history.length}번 만에 홈런! 정답은 ${secret.join(' ')}`;
+    }
+    if (status === 'lost') {
+      return `삼진 아웃! 정답은 ${secret.join(' ')}였습니다`;
+    }
+    if (!lastEntry) {
+      return `1~9 숫자 ${digitCount}개를 중복 없이 입력하세요`;
+    }
+    return `${lastEntry.strike} 스트라이크 / ${lastEntry.ball} 볼 — 계속 입력하세요`;
+  }, [status, history.length, secret, lastEntry, digitCount]);
+
   return {
     digitCount,
+    mode,
     input,
+    status,
     gameOver,
-    turns,
     history,
     hint,
-    availableDigits,
+    lastEntry,
+    triesLeft,
+    secret,
     onDigit,
     onDelete,
     onSubmit,
     newGame,
     canSubmit: !gameOver && input.length === digitCount,
-    isOutRow: isOut,
   };
 }

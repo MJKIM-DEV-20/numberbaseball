@@ -6,15 +6,11 @@ interface DigitSlotsProps {
 
 export function DigitSlots({ digitCount, input, gameOver }: DigitSlotsProps) {
   return (
-    <div className="digits">
+    <div className="digit-row">
       {Array.from({ length: digitCount }, (_, i) => {
         const filled = i < input.length;
         const isCursor = i === input.length && !gameOver;
-        const classes = [
-          'digit-slot',
-          filled ? 'filled' : '',
-          isCursor ? 'cursor' : '',
-        ]
+        const classes = ['digit-slot', filled ? 'filled' : '', isCursor ? 'cursor' : '']
           .filter(Boolean)
           .join(' ');
         return (

@@ -3,11 +3,15 @@ export interface JudgeResult {
   ball: number;
 }
 
-export type HistoryEntry ={
+export type HistoryEntry = {
   guess: number[];
   strike: number;
   ball: number;
-}
+};
+
+export type GameMode = 'limited' | 'unlimited';
+
+export const MAX_TRIES = 9;
 
 /**
  * Fisher-Yates shuffle of the digit pool 1..9, then take the first `count`.

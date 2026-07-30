@@ -25,27 +25,22 @@ export function Keypad({
         const used = input.includes(n);
         const disabled = used || input.length >= digitCount || gameOver;
         return (
-          <button
-            key={n}
-            className="key"
-            disabled={disabled}
-            onClick={() => onDigit(n)}
-          >
+          <button key={n} className="key" disabled={disabled} onClick={() => onDigit(n)}>
             {n}
           </button>
         );
       })}
 
       <button className="key func" disabled={gameOver} onClick={onDelete}>
-        지움<span className="sub">DEL</span>
+        지움
       </button>
 
       <button className="key func" onClick={onReset}>
-        새게임<span className="sub">RESET</span>
+        새 게임
       </button>
 
       <button className="key enter" disabled={!canSubmit} onClick={onSubmit}>
-        확인<span className="sub">ENTER</span>
+        투구
       </button>
     </div>
   );
